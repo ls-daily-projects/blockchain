@@ -3,89 +3,63 @@ import json
 from time import time
 from uuid import uuid4
 
-from flask import Flask, jsonify, request
+from block import Block
 
 
-class Blockchain(object):
-    def __init__(self):
+class Blockchain():
+    def __init__(self, difficulty=3):
         self.chain = []
         self.current_transactions = []
+        self.difficulty = difficulty
 
         # Create the genesis block
-        self.new_block(previous_hash=1, proof=100)
+        genesis_block = self.new_block(proof=100, previous_hash=1)
+        self.chain.append(genesis_block)
 
     def new_block(self, proof, previous_hash=None):
         """
         Create a new Block in the Blockchain
-
-        A block should have:
-        * Index
-        * Timestamp
-        * List of current transactions
-        * The proof used to mine this block
-        * The hash of the previous block
-
-        :param proof: <int> The proof given by the Proof of Work algorithm
-        :param previous_hash: (Optional) <str> Hash of previous Block
-        :return: <dict> New Block
         """
+        new_index = len(self.chain) + 1
 
-        block = {
-            # TODO
-        }
+        if not previous_hash:
+            previous_hash = self.hash(self.last_block)
 
-        # Reset the current list of transactions
-        # Append the chain to the block
-        # Return the new block
-        pass
+        block = Block(new_index, self.current_transactions,
+                      proof, previous_hash)
 
+        # Why are we resetting the current transactions?
+        # What are current transactions even for?
+        self.current_transactions = []
+
+        return block
+
+    @staticmethod
     def hash(block):
         """
         Creates a SHA-256 hash of a Block
-
-        :param block": <dict> Block
-        "return": <str>
         """
-
-        # Use json.dumps to convert json into a string
-        # Use hashlib.sha256 to create a hash
-        # It requires a `bytes-like` object, which is what
-        # .encode() does.
-        # It convertes the string to bytes.
-        # We must make sure that the Dictionary is Ordered,
-        # or we'll have inconsistent hashes
-
-        # TODO: Create the block_string
-
-        # TODO: Hash this string using sha256
-
-        # By itself, the sha256 function returns the hash in a raw string
-        # that will likely include escaped characters.
-        # This can be hard to read, but .hexdigest() converts the
-        # hash to a string of hexadecimal characters, which is
-        # easier to work with and understand
-
-        # TODO: Return the hashed block string in hexadecimal format
-        pass
+        encoded_block_string = str(block).encode()
+        hex_hash = hashlib.sha256(encoded_block_string).hexdigest()
+        return hex_hash
 
     @property
     def last_block(self):
         return self.chain[-1]
 
-    def proof_of_work(self, block):
+    def proof_of_work(self):
         """
         Simple Proof of Work Algorithm
-        Stringify the block and look for a proof.
-        Loop through possibilities, checking each one against `valid_proof`
-        in an effort to find a number that is a valid proof
-        :return: A valid proof for the provided block
         """
-        # TODO
-        pass
-        # return proof
+        encoded_block_string = str(self.last_block).encode()
+        proof = 0
 
-    @staticmethod
-    def valid_proof(block_string, proof):
+        while not self.valid_proof(encoded_block_string, proof):
+            proof += 1
+
+        return proof
+
+    def valid_proof(self, block_string, proof):
         """
         Validates the Proof:  Does hash(block_string, proof) contain 3
         leading zeroes?  Return true if the proof is valid
@@ -96,42 +70,14 @@ class Blockchain(object):
         correct number of leading zeroes.
         :return: True if the resulting hash is a valid proof, False otherwise
         """
-        # TODO
-        pass
-        # return True or False
+        guess = block_string + f"{proof}".encode()
+        guess_hex_hash = hashlib.sha256(guess).hexdigest()
+        guess_leading_zeroes = guess_hex_hash[:self.difficulty]
+        expected_leading_zeroes = "0"*self.difficulty
+        is_valid = guess_leading_zeroes == expected_leading_zeroes
+        if is_valid:
+            print(guess_hex_hash)
+        return is_valid
 
 
-# Instantiate our Node
-app = Flask(__name__)
-
-# Generate a globally unique address for this node
 node_identifier = str(uuid4()).replace('-', '')
-
-# Instantiate the Blockchain
-blockchain = Blockchain()
-
-
-@app.route('/mine', methods=['GET'])
-def mine():
-    # Run the proof of work algorithm to get the next proof
-
-    # Forge the new Block by adding it to the chain with the proof
-
-    response = {
-        # TODO: Send a JSON response with the new block
-    }
-
-    return jsonify(response), 200
-
-
-@app.route('/chain', methods=['GET'])
-def full_chain():
-    response = {
-        # TODO: Return the chain and its current length
-    }
-    return jsonify(response), 200
-
-
-# Run the program on port 5000
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
